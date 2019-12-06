@@ -20,7 +20,7 @@ reqs = [str(ir.req) for ir in install_reqs]
 setup(
     name='nash-makerbot',
     python_requires='>=3.6',
-    version='0.1.2',
+    version='0.1.3',
     description="A crypto market maker bot that is easy understand and customize",
     long_description=readme + '\n\n' + history,
     author="Nash",

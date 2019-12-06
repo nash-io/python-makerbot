@@ -32,16 +32,12 @@ This bot implements a simple symmetric market-maker algorithm. It is based on th
 .. figure:: docs/fig/0_start.png
    :alt: Market volatility
 
-   Market volatility
-
 When the bot starts, it watches the order book for the chosen market until it gets ``min_history_points`` updates or a maximum time of ``max_loading_time`` passes. The order book is stored in the ``OrderBookSeries`` object. This is a ``NamedTuple`` with two fields wrapping around two ``NumPy.Array``s, one ``obs.t`` that contains the time in which each snapshot of the order book was recorded and another ``obs.data`` that contains the snapshots of the order book.
 
 1. The bot will place the first buy order, the **scrum buy**. It is defined as ``setup_scrum_buy``.
 
 .. figure:: docs/fig/1_scrum_buy.png
    :alt: Scrum buy
-
-   Scrum buy
 
 2. If the price goes up, the **scrum buy** order will be filled. In that case, the bot will place a new buy order **buy 1** with a price ``buy_down_interval`` lower than the microprice.
 
