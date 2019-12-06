@@ -39,11 +39,11 @@ This bot implements a simple symmetric market maker algorithm. It is based on th
 
 3. At the same time as placing buy 1 a sell order corresponding to the scrum buy **sell (sb)** will be placed at a price `straddle` higher than the buy 1. The bot has than became a market maker as it has both buy and sell orders open in the limit order book.
 
-![enter image description here](docs/fig/3_maker1)
+![enter image description here](docs/fig/3_maker1.png)
 
 4. As the volatility of the market continues it will continue to place buy and sell orders.
 
-![enter image description here](docs/fig/4_maker2)
+![enter image description here](docs/fig/4_maker2.png)
 
 Users are invited to take a special look are expand the functions `should_rebuy`, `should_place_buy`, `get_buy_order` and `size_order`.
 

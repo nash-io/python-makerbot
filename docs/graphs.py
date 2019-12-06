@@ -1,10 +1,9 @@
-# TODO: add xkcd like matplitlib plots explaining how makerbot works
 from matplotlib import pyplot as plt
 from collections import namedtuple
 
 plt.xkcd()
 
-fig = plt.figure(figsize=(11, 9), dpi=90)
+fig = plt.figure(figsize=(9, 7), dpi=90)
 ax = fig.add_subplot(1, 1, 1)
 ax.spines['right'].set_color('none')
 ax.spines['top'].set_color('none')
