@@ -3,7 +3,7 @@ from collections import namedtuple
 
 plt.xkcd()
 
-fig = plt.figure(figsize=(9, 7), dpi=90)
+fig = plt.figure(figsize=(9, 7), dpi=80)
 ax = fig.add_subplot(1, 1, 1)
 ax.spines['right'].set_color('none')
 ax.spines['top'].set_color('none')

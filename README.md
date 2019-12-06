@@ -1,3 +1,7 @@
+<p align="center">
+<img src="docs/fig/bot.png">
+</p>
+
 # makerbot - a simple market maker bot
 The makerbot is a cryptocurrency market maker bot that is easy understand and customize. Its goal is to create a useful practical tool to start on algorithm trading of digital assets, the bot should be provide a skeleton for traders wanting to perform the market maker strategy to build upon, a side goal is to offer a possible profitable setup for trading at Nash out-of-the-box, so users can learn by doing.
 
