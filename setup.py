@@ -8,10 +8,10 @@ except ImportError:  # pip version < 10.0
     from pip.req import parse_requirements
     from pip.download import PipSession
 
-with open('README.rst') as readme_file:
+with open('README.md') as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.md') as history_file:
+with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 install_reqs = parse_requirements('requirements.txt', session=PipSession())
