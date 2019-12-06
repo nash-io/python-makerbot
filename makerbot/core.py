@@ -11,11 +11,7 @@ Options:
   --version        Show version.
   --config=<file>  Configuration file [default: config.ini].
 """
-# TODO: refactor to make it more pythonic and clean
-# TODO: package for pipy
-# TODO: add testing everywhere
-# TODO: generalize for custom strategy
-# TODO: create Web UI
+
 
 import time
 import logging
@@ -29,7 +25,7 @@ from nash import NashApi, CurrencyAmount
 from decimal import Decimal, getcontext
 from .helpers import Order, OrderBookSeries, retry, get_config
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 # The maximum precision for amount and prices in Nash is 8, so we set that
 getcontext().prec = 8
 getcontext().rounding = "ROUND_FLOOR"
@@ -126,15 +122,8 @@ def size_order(obs: OrderBookSeries, order: Order) -> Order:
     return order.replace(amount = amt)
 
 def get_buy_order(obs, df: pd.DataFrame) -> Order:
-    """ This function is called to price a order being placed.
-
-        #TODO: As an example implement sided pricing based on portifolio q:
-            High-frequency trading in a limit order book
-            MARCO AVELLANEDA and SASHA STOIKOV
-            Quantitative Finance, Vol. 8, No. 3, April 2008, 217–224
-    """
-    #gamma = CONFIG["risk_aversion"]
-    # Use microprice as fair price
+    """ This function is called to price a order being placed."""
+    # Use microprice as reference
     price = Decimal(str(df.Pmicro[-1])) - CONFIG["buy_down_interval"]
     return size_order(obs, Order(price, 0, "BUY"))
 
@@ -216,7 +205,6 @@ type_map = {'env': str,
             'max_loading_time': int,
             'max_obs_size': int,
             'stable_price': Decimal,
-            'risk_aversion': Decimal,
             'buy_down_interval': Decimal,
             'straddle': Decimal,
             'log_to_file': str,
@@ -230,27 +218,27 @@ def main():
     twofa = getpass('2FA if enabled: ')
     if not twofa.strip():
         twofa = None
-
     print("starting ...\n")
+    # Setup logger and config
+    global CONFIG
+    CONFIG = get_config(type_map, arguments['<market>'], arguments['--config'])
+    # Stup logging based on configs
+    global logger
+    logger = logging.getLogger('pymaker')
+    logger.setLevel(CONFIG['log_level'])
+    # create correct handler
+    if CONFIG['log_to_file'] in ['y', 'Y', 'yes', 'Yes', 'YES']:
+        handler = logging.FileHandler(r'./makerbot.log')
+    else:
+        handler = logging.StreamHandler()
+
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     # Loop until Ctrl+C is hit
     try:
-        global CONFIG
-        CONFIG = get_config(type_map, arguments['<market>'], arguments['--config'])
-        # Stup logging based on configs
-        global logger
-        logger = logging.getLogger('pymaker')
-        logger.setLevel(CONFIG['log_level'])
 
-        # create correct handler
-        if CONFIG['log_to_file'] in ['y', 'Y', 'yes', 'Yes', 'YES']:
-            handler = logging.FileHandler(r'./makerbot.log')
-        else:
-            handler = logging.StreamHandler()
-
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s: %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
         global api
         api = NashApi(environment=CONFIG['env'])
         api.login(login, pwd, twofa)
