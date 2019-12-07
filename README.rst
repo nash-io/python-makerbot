@@ -22,6 +22,7 @@ Install a Python 3 package manager if you do not already have one:
 -  Using pip, install the bot: ``$ pip3 install --user nash-makerbot``
 -  Get the example configuration file provided here:
    ``$ wget https://gitlab.com/nash-io-public/nash-makerbot/raw/master/default.ini``
+-  Update your $PATH to include the makerbot command by either re-entering the terminal or:``source ~/.bashrc``
 -  Start the bot: ``$ makerbot start eth_usdc --config=default.ini``
 
 How it works
@@ -32,7 +33,7 @@ This bot implements a simple symmetric market-maker algorithm. It is based on th
 .. figure:: docs/fig/0_start.png
    :alt: Market volatility
 
-When the bot starts, it watches the order book for the chosen market until it gets ``min_history_points`` updates or a maximum time of ``max_loading_time`` passes. The order book is stored in the ``OrderBookSeries`` object. This is a ``NamedTuple`` with two fields wrapping around two ``NumPy.Array``s, one ``obs.t`` that contains the time in which each snapshot of the order book was recorded and another ``obs.data`` that contains the snapshots of the order book.
+When the bot starts, it watches the order book for the chosen market until it gets ``min_history_points`` updates or a maximum time of ``max_loading_time`` passes. The order book is stored in the ``OrderBookSeries`` object. This is a ``NamedTuple`` with two fields wrapping around two ``NumPy.Array`` s, one ``obs.t`` that contains the time in which each snapshot of the order book was recorded and another ``obs.data`` that contains the snapshots of the order book.
 
 1. The bot will place the first buy order, the **scrum buy**. It is defined as ``setup_scrum_buy``.
 
