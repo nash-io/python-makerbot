@@ -12,18 +12,22 @@ Quick install guide
 
 Install a Python 3 package manager if you do not already have one:
 
--  On Ubuntu/Debian: ``$ sudo apt install python3-pip``
--  On Fedora/CentOS: ``$ sudo dnf install python3-pip``
+-  On Ubuntu/Debian: ``sudo apt install python3-pip``
+-  On Fedora/CentOS: ``sudo dnf install python3-pip``
 -  On Mac OSX, first install Homebrew, then Python 3:
 
-   -  ``$ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"``
-   -  ``$ brew install python3``
+   -  ``/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"``
+   -  ``brew install python3``
 
--  Using pip, install the bot: ``$ pip3 install --user nash-makerbot``
+-  Using pip, install the bot:
+
+    - as a user: ``pip3 install --user nash-makerbot``
+    - as root: ``pip3 install -U nash-makerbot``
+
 -  Get the example configuration file provided here:
    ``$ wget https://gitlab.com/nash-io-public/nash-makerbot/raw/master/default.ini``
 -  Update your $PATH to include the makerbot command by either re-entering the terminal or:``source ~/.bashrc``
--  Start the bot: ``$ makerbot start eth_usdc --config=default.ini``
+-  Start the bot: ``makerbot start eth_usdc --config=default.ini``
 
 How it works
 ------------
