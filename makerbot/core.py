@@ -25,7 +25,7 @@ from nash import NashApi, CurrencyAmount
 from decimal import Decimal, getcontext
 from .helpers import Order, OrderBookSeries, retry, get_config
 
-VERSION = "0.1.3"
+__version__ = "0.1.3"
 # The maximum precision for amount and prices in Nash is 8, so we set that
 getcontext().prec = 8
 getcontext().rounding = "ROUND_FLOOR"
@@ -211,8 +211,8 @@ type_map = {'env': str,
             'log_level': log_map}
 
 def main():
-    arguments = docopt(__doc__, version=VERSION)
-    print("Nash market maker bot, version {}\n".format(VERSION))
+    arguments = docopt(__doc__, version=__version__)
+    print("Nash market maker bot, version {}\n".format(__version__))
     login = input('Nash login email: ')
     pwd = getpass('Nash login password: ')
     twofa = getpass('2FA if enabled: ')

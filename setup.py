@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+from makerbot import __version__
 from setuptools import setup, find_packages
+
 try:  # pip version >= 10.0
     from pip._internal.req import parse_requirements
     from pip._internal.download import PipSession
@@ -20,7 +22,7 @@ reqs = [str(ir.req) for ir in install_reqs]
 setup(
     name='nash-makerbot',
     python_requires='>=3.6',
-    version='0.1.3',
+    version=__version__,
     description="A crypto market maker bot that is easy understand and customize",
     long_description=readme + '\n\n' + history,
     author="Nash",

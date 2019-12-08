@@ -3,7 +3,6 @@
 """Top-level package for makerbot."""
 
 __author__ = """Nash"""
-__version__ = '0.1.3'
 
-from .core import main
+from .core import main, __version__
 from .helpers import Order, OrderBookSeries, retry, get_config
