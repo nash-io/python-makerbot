@@ -133,10 +133,10 @@ def is_equal(lhs, rhs) -> bool:
     return diff < 1e-7
 
 def is_buying(obs: OrderBookSeries) -> bool:
-    """Try to determine if market is buying in the last 30 seconds."""
-    last30s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(30, 's')).flatten()
-    Qa_top = obs.data['Qask'][last30s][:,:2] # Size of low 2 asks in last 30s
-    Qb_top = obs.data['Qbid'][last30s][:,:2] # Size of top 2 bids in last 30s
+    """Try to determine if market is buying in the last 15 seconds."""
+    last15s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(15, 's')).flatten()
+    Qa_top = obs.data['Qask'][last15s][:,:2] # Size of low 2 asks in last 30s
+    Qb_top = obs.data['Qbid'][last15s][:,:2] # Size of top 2 bids in last 30s
     Qa_avg = np.average(Qa_top, axis = 1)
     Qb_avg = np.average(Qb_top, axis = 1)
     I = Qb_avg / (Qb_avg + Qa_avg) # Finally Compute imbalance!
@@ -266,7 +266,7 @@ def main():
             update_id = orderbook.update_id
             obs = obs.update(orderbook, CONFIG['max_obs_size'])
             df = get_obs_dataframe(obs)
-            orders = retry(get_orders, timeout = 0.4)
+            orders = retry(get_orders)
             sell_orders = get_active_sell_orders(orders)
             buy_order = get_last_buy_order(orders)
             # Get maximum amount for a buy order on this round
@@ -274,7 +274,7 @@ def main():
             if max_amount < Decimal(market.min_trade_size_b):
                 logger.info("Max order size currently lower than market minimum")
                 # If funds are unavailable means we need to wait a sell order to fill
-                time.sleep(10)
+                time.sleep(5)
                 continue
             if not should_place_buy(obs):
                 logger.debug("Skipping placement because market is not buying.")
@@ -284,7 +284,7 @@ def main():
                 setup_scrum_buy(market, obs, df, buy_order, max_amount)
                 # Give some time after placing scrum buy, the idea is to give change for market
                 # volatility to hit it or change price in meaningful way
-                time.sleep(10)
+                time.sleep(5)
             # If we don't have a active buy we nee
             else:
                 filled = buy_order.amount - buy_order.amount_remaining
