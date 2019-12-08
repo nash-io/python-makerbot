@@ -25,7 +25,7 @@ from nash import NashApi, CurrencyAmount
 from decimal import Decimal, getcontext
 from .helpers import Order, OrderBookSeries, retry, get_config
 
-VERSION = "0.1.3"
+__version__ = "0.1.4"
 # The maximum precision for amount and prices in Nash is 8, so we set that
 getcontext().prec = 8
 getcontext().rounding = "ROUND_FLOOR"
@@ -110,22 +110,27 @@ def get_last_buy_order(orders: list):
         raise Exception("More than one active buy order detected!")
     return sorted(buy_orders, key = lambda o: o.placed_at).pop()
 
-def size_order(obs: OrderBookSeries, order: Order) -> Order:
+def size_order(obs: OrderBookSeries, order: Order, min_amount_base) -> Order:
     """ This function is called when a order is being placed and it needs to be
         sized for an amount, needs a order with price and direction
     """
+    # Respect maximum amount of funds (base currency) in order
     Q_max = np.longfloat(str(CONFIG['max_funds_in_order'] / order.price))
+    # Size order as the mean size of the two top orders on the last 15s
     last15s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(15, 's')).flatten()
     side = 'Qask' if order.buy_or_sell == 'BUY' else 'Qbid'
     Q = obs.data[side][last15s]
     amt = min(Q[:,:2].mean(), Q_max)
+    # Make sure order size is not lower than the min amount of that market
+    amt = max(amt, min_amount_base)
     return order.replace(amount = amt)
 
-def get_buy_order(obs, df: pd.DataFrame) -> Order:
+def get_buy_order(market, obs, df: pd.DataFrame) -> Order:
     """ This function is called to price a order being placed."""
     # Use microprice as reference
+    min_trade_size = float(market.min_trade_size)
     price = Decimal(str(df.Pmicro[-1])) - CONFIG["buy_down_interval"]
-    return size_order(obs, Order(price, 0, "BUY"))
+    return size_order(obs, Order(price, 0, "BUY"), min_trade_size)
 
 def is_equal(lhs, rhs) -> bool:
     """Check if lhs and rhs are equal."""
@@ -133,10 +138,10 @@ def is_equal(lhs, rhs) -> bool:
     return diff < 1e-7
 
 def is_buying(obs: OrderBookSeries) -> bool:
-    """Try to determine if market is buying in the last 30 seconds."""
-    last30s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(30, 's')).flatten()
-    Qa_top = obs.data['Qask'][last30s][:,:2] # Size of low 2 asks in last 30s
-    Qb_top = obs.data['Qbid'][last30s][:,:2] # Size of top 2 bids in last 30s
+    """Try to determine if market is buying in the last 15 seconds."""
+    last15s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(15, 's')).flatten()
+    Qa_top = obs.data['Qask'][last15s][:,:2] # Size of low 2 asks in last 30s
+    Qb_top = obs.data['Qbid'][last15s][:,:2] # Size of top 2 bids in last 30s
     Qa_avg = np.average(Qa_top, axis = 1)
     Qb_avg = np.average(Qb_top, axis = 1)
     I = Qb_avg / (Qb_avg + Qa_avg) # Finally Compute imbalance!
@@ -165,7 +170,7 @@ def setup_scrum_buy(market, obs, df: pd.DataFrame, buy_order: Order, max_amount:
     """ Manage the creation and placement of a scrum buy, handle rebuy and
         cancelation if needed due to market going up.
     """
-    buy_1 = get_buy_order(obs, df).constrain(market, max_amount)
+    buy_1 = get_buy_order(market, obs, df).constrain(market, max_amount)
     if not buy_order:
         logger.info('No buy order, checking if should place scrum buy.')
         place_order(market, buy_1)
@@ -211,13 +216,10 @@ type_map = {'env': str,
             'log_level': log_map}
 
 def main():
-    arguments = docopt(__doc__, version=VERSION)
-    print("Nash market maker bot, version {}\n".format(VERSION))
+    arguments = docopt(__doc__, version=__version__)
+    print("Nash market maker bot, version {}\n".format(__version__))
     login = input('Nash login email: ')
     pwd = getpass('Nash login password: ')
-    twofa = getpass('2FA if enabled: ')
-    if not twofa.strip():
-        twofa = None
     print("starting ...\n")
     # Setup logger and config
     global CONFIG
@@ -241,7 +243,7 @@ def main():
 
         global api
         api = NashApi(environment=CONFIG['env'])
-        api.login(login, pwd, twofa)
+        api.login(login, pwd, None)
 
         market = api.get_market(CONFIG['market'])
         _, quote = market.name.split('_')
@@ -266,7 +268,7 @@ def main():
             update_id = orderbook.update_id
             obs = obs.update(orderbook, CONFIG['max_obs_size'])
             df = get_obs_dataframe(obs)
-            orders = retry(get_orders, timeout = 0.4)
+            orders = retry(get_orders)
             sell_orders = get_active_sell_orders(orders)
             buy_order = get_last_buy_order(orders)
             # Get maximum amount for a buy order on this round
@@ -274,7 +276,7 @@ def main():
             if max_amount < Decimal(market.min_trade_size_b):
                 logger.info("Max order size currently lower than market minimum")
                 # If funds are unavailable means we need to wait a sell order to fill
-                time.sleep(10)
+                time.sleep(5)
                 continue
             if not should_place_buy(obs):
                 logger.debug("Skipping placement because market is not buying.")
@@ -284,7 +286,7 @@ def main():
                 setup_scrum_buy(market, obs, df, buy_order, max_amount)
                 # Give some time after placing scrum buy, the idea is to give change for market
                 # volatility to hit it or change price in meaningful way
-                time.sleep(10)
+                time.sleep(5)
             # If we don't have a active buy we nee
             else:
                 filled = buy_order.amount - buy_order.amount_remaining
@@ -292,7 +294,7 @@ def main():
                 if filled > 0:
                     logger.info("Previous buy filled. Placing new pair.")
                     api.cancel_order(buy_order.id, market.name)
-                    new_buy = get_buy_order(obs, df).constrain(market, max_amount)
+                    new_buy = get_buy_order(market, obs, df).constrain(market, max_amount)
                     previous_sell = get_corresponding_sell(market, new_buy.replace(amount = filled))
                     place_order(market, previous_sell)
                     buy_order = place_order(market, new_buy)
@@ -302,7 +304,7 @@ def main():
                     if not is_top_order:
                         logger.info("Straddle too big. Performing rebuy.")
                         api.cancel_order(buy_order.id, market.name)
-                        new_buy = get_buy_order(obs, df).constrain_price(market)
+                        new_buy = get_buy_order(market, obs, df).constrain_price(market)
                         buy_order = place_order(market, new_buy.replace(amount = buy_order.amount))
 
     except KeyboardInterrupt:

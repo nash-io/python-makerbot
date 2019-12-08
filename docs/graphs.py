@@ -3,7 +3,7 @@ from collections import namedtuple
 
 plt.xkcd()
 
-fig = plt.figure(figsize=(9, 7), dpi=80)
+fig = plt.figure(figsize=(8, 6), dpi=80)
 ax = fig.add_subplot(1, 1, 1)
 ax.spines['right'].set_color('none')
 ax.spines['top'].set_color('none')
@@ -43,7 +43,7 @@ plt.annotate(
     '',
     xy=(3.8, scrum_buy.y - buy_dow_interval + straddle), arrowprops=dict(arrowstyle='<->'), xytext=(3.8, scrum_buy.y - buy_dow_interval))
 plt.text(3.55, 8.5, 'straddle')
-#
+
 plt.hlines(y=scrum_buy.y - buy_dow_interval, xmin=2.2, xmax=4.25, color='g', linestyles='--', lw=1)
 
 plt.annotate(

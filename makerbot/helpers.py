@@ -28,17 +28,17 @@ def get_config(type_map, market: str, configfile="config.ini"):
 
     return MappingProxyType(config_mut)
 
-def retry(func, tries = 3, timeout = 0.1):
+def retry(func, max_tries = 16, timeout = 0.1):
     """Helper to retry functions and preserve exceptions, handy for network calls."""
-    att = 0
+    acm = 0
     while True:
         try:
             return func()
-        except Exception as exception:
-            att += 1
-            if att > 3:
+        except Exception as exception:        
+            if acm > max_tries:
                 raise exception
-            time.sleep(timeout)
+            time.sleep(timeout * (2 ** acm))
+            acm += 1
 
 def parse_positive_decimal(value, label):
     val = Decimal(str(value))

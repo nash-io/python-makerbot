@@ -1,6 +1,12 @@
 =======
 History
 =======
+0.1.4 (2019-12-08)
+------------------
+* Adjust timings
+* Make retry use pg backoff
+* Respect min base amount on orders
+
 0.1.3 (2019-12-06)
 ------------------
 * Fix typos
