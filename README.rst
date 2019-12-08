@@ -3,12 +3,15 @@ Makerbot: A simple market-maker bot
 
 The makerbot is a cryptocurrency market-maker bot that is easy to understand and customize. Its goal is to create a useful practical tool to begin trading digital assets algorithmically. The bot provides a skeleton to build upon for traders wanting to perform market-maker strategies. Its default configuration should allow for trading on Nash out of the box, so users can start quickly.
 
-**Requires Python 3**
+**Requires Python 3.7**
 
 **This software is a beta. It works as intended but several improvements are expected in the near term.**
 
 Quick install guide
 -------------------
+
+First you will need a Nash (https://nash.io) account with 2FA disabled.
+The login credentials will be asked after starting the bot.
 
 Install a Python 3 package manager if you do not already have one:
 
@@ -21,8 +24,8 @@ Install a Python 3 package manager if you do not already have one:
 
 -  Using pip, install the bot:
 
-    - as a user: ``pip3 install --user nash-makerbot``
-    - as root: ``pip3 install -U nash-makerbot``
+   -  as a user: ``pip3 install --user nash-makerbot``
+   -  as root: ``pip3 install -U nash-makerbot``
 
 -  Get the example configuration file provided here:
    ``$ wget https://gitlab.com/nash-io-public/nash-makerbot/raw/master/default.ini``
