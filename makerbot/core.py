@@ -215,9 +215,6 @@ def main():
     print("Nash market maker bot, version {}\n".format(__version__))
     login = input('Nash login email: ')
     pwd = getpass('Nash login password: ')
-    twofa = getpass('2FA if enabled: ')
-    if not twofa.strip():
-        twofa = None
     print("starting ...\n")
     # Setup logger and config
     global CONFIG
@@ -241,7 +238,7 @@ def main():
 
         global api
         api = NashApi(environment=CONFIG['env'])
-        api.login(login, pwd, twofa)
+        api.login(login, pwd, None)
 
         market = api.get_market(CONFIG['market'])
         _, quote = market.name.split('_')
