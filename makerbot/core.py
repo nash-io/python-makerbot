@@ -25,7 +25,7 @@ from nash import NashApi, CurrencyAmount
 from decimal import Decimal, getcontext
 from .helpers import Order, OrderBookSeries, retry, get_config
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 # The maximum precision for amount and prices in Nash is 8, so we set that
 getcontext().prec = 8
 getcontext().rounding = "ROUND_FLOOR"
@@ -110,22 +110,27 @@ def get_last_buy_order(orders: list):
         raise Exception("More than one active buy order detected!")
     return sorted(buy_orders, key = lambda o: o.placed_at).pop()
 
-def size_order(obs: OrderBookSeries, order: Order) -> Order:
+def size_order(obs: OrderBookSeries, order: Order, min_amount_base) -> Order:
     """ This function is called when a order is being placed and it needs to be
         sized for an amount, needs a order with price and direction
     """
+    # Respect maximum amount of funds (base currency) in order
     Q_max = np.longfloat(str(CONFIG['max_funds_in_order'] / order.price))
+    # Size order as the mean size of the two top orders on the last 15s
     last15s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(15, 's')).flatten()
     side = 'Qask' if order.buy_or_sell == 'BUY' else 'Qbid'
     Q = obs.data[side][last15s]
     amt = min(Q[:,:2].mean(), Q_max)
+    # Make sure order size is not lower than the min amount of that market
+    amt = max(amt, min_amount_base)
     return order.replace(amount = amt)
 
-def get_buy_order(obs, df: pd.DataFrame) -> Order:
+def get_buy_order(market, obs, df: pd.DataFrame) -> Order:
     """ This function is called to price a order being placed."""
     # Use microprice as reference
+    min_trade_size = float(market.min_trade_size)
     price = Decimal(str(df.Pmicro[-1])) - CONFIG["buy_down_interval"]
-    return size_order(obs, Order(price, 0, "BUY"))
+    return size_order(obs, Order(price, 0, "BUY"), min_trade_size)
 
 def is_equal(lhs, rhs) -> bool:
     """Check if lhs and rhs are equal."""
@@ -165,7 +170,7 @@ def setup_scrum_buy(market, obs, df: pd.DataFrame, buy_order: Order, max_amount:
     """ Manage the creation and placement of a scrum buy, handle rebuy and
         cancelation if needed due to market going up.
     """
-    buy_1 = get_buy_order(obs, df).constrain(market, max_amount)
+    buy_1 = get_buy_order(market, obs, df).constrain(market, max_amount)
     if not buy_order:
         logger.info('No buy order, checking if should place scrum buy.')
         place_order(market, buy_1)
@@ -289,7 +294,7 @@ def main():
                 if filled > 0:
                     logger.info("Previous buy filled. Placing new pair.")
                     api.cancel_order(buy_order.id, market.name)
-                    new_buy = get_buy_order(obs, df).constrain(market, max_amount)
+                    new_buy = get_buy_order(market, obs, df).constrain(market, max_amount)
                     previous_sell = get_corresponding_sell(market, new_buy.replace(amount = filled))
                     place_order(market, previous_sell)
                     buy_order = place_order(market, new_buy)
@@ -299,7 +304,7 @@ def main():
                     if not is_top_order:
                         logger.info("Straddle too big. Performing rebuy.")
                         api.cancel_order(buy_order.id, market.name)
-                        new_buy = get_buy_order(obs, df).constrain_price(market)
+                        new_buy = get_buy_order(market, obs, df).constrain_price(market)
                         buy_order = place_order(market, new_buy.replace(amount = buy_order.amount))
 
     except KeyboardInterrupt:
