@@ -25,7 +25,7 @@ from nash import NashApi, CurrencyAmount
 from decimal import Decimal, getcontext
 from .helpers import Order, OrderBookSeries, retry, get_config
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 # The maximum precision for amount and prices in Nash is 8, so we set that
 getcontext().prec = 8
 getcontext().rounding = "ROUND_FLOOR"
@@ -62,15 +62,14 @@ def funds_in_open_orders(orders) -> Decimal:
 
 def get_max_order_funds(orders) -> Decimal:
     """ Get maximum of funds to allocate in a order
-    divide by two because bought funds need to be placed for sell
     """
-    return (CONFIG["max_funds_in_flight"] - funds_in_open_orders(orders)) / 2
+    return CONFIG["max_funds_in_flight"] - funds_in_open_orders(orders)
 
 def get_corresponding_sell(market, buy: Order) -> Order:
     """ Build the corresponding sell order for the given buy order."""
     sell_price = buy.price + CONFIG['straddle']
-    tmp_order = buy.replace(price = sell_price).replace(buy_or_sell = 'SELL')
-    return tmp_order.constrain_price(market)
+    sell_order = buy.replace(price = sell_price).replace(buy_or_sell = 'SELL')
+    return sell_order.constrain_price(market)
 
 def place_order(market, order) -> Order:
     """ Place order in NashApi format
@@ -138,10 +137,10 @@ def is_equal(lhs, rhs) -> bool:
     return diff < 1e-7
 
 def is_buying(obs: OrderBookSeries) -> bool:
-    """Try to determine if market is buying in the last 15 seconds."""
-    last15s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(15, 's')).flatten()
-    Qa_top = obs.data['Qask'][last15s][:,:2] # Size of low 2 asks in last 30s
-    Qb_top = obs.data['Qbid'][last15s][:,:2] # Size of top 2 bids in last 30s
+    """Try to determine if market is buying in the last 10 seconds."""
+    last10s = np.argwhere(obs.t > obs.t[-1] - np.timedelta64(10, 's')).flatten()
+    Qa_top = obs.data['Qask'][last10s][:,:2] # Size of low 2 asks in last 10s
+    Qb_top = obs.data['Qbid'][last10s][:,:2] # Size of top 2 bids in last 10s
     Qa_avg = np.average(Qa_top, axis = 1)
     Qb_avg = np.average(Qb_top, axis = 1)
     I = Qb_avg / (Qb_avg + Qa_avg) # Finally Compute imbalance!
@@ -166,6 +165,13 @@ def should_rebuy(sell_orders: dict, buy_order: Order) -> bool:
     eff_straddle = low_sell.price - buy_order.price
     return eff_straddle > CONFIG['straddle'] + CONFIG['buy_down_interval']
 
+def is_top_bid(bid_price, top_bid, botton_ask):
+    is_same = is_equal(bid_price, top_bid)
+    if is_same:
+        return True
+    is_min_straddle = bid_price >= (Decimal(str(botton_ask)) - CONFIG['straddle'])
+    return is_min_straddle
+
 def setup_scrum_buy(market, obs, df: pd.DataFrame, buy_order: Order, max_amount: Decimal):
     """ Manage the creation and placement of a scrum buy, handle rebuy and
         cancelation if needed due to market going up.
@@ -175,7 +181,6 @@ def setup_scrum_buy(market, obs, df: pd.DataFrame, buy_order: Order, max_amount:
         logger.info('No buy order, checking if should place scrum buy.')
         place_order(market, buy_1)
     else:
-        is_top_bid = is_equal(buy_order.price, df.Pbid[-1])
         filled = buy_order.amount - buy_order.amount_remaining
         if filled > 0:
             logger.info("Scrum buy filled.")
@@ -184,7 +189,7 @@ def setup_scrum_buy(market, obs, df: pd.DataFrame, buy_order: Order, max_amount:
             place_order(market, scrum_sell)
             place_order(market, buy_1)
         # Order has not filled at least 5% and is not the top bid anymore
-        elif not is_top_bid:
+        elif not is_top_bid(buy_order.price, df.Pbid[-1], df.Pask[-1]):
             logger.info("Scrum not top anymore - rebuy.")
             # Market has not hit the order and it is no longer best ask
             api.cancel_order(buy_order.id, market.name)
@@ -254,18 +259,20 @@ def main():
         get_orders = lambda: api.list_account_orders(market.name,
                                                      status = ['OPEN', 'PENDING', 'FILLED'],
                                                      range_start = start_time).orders
+        get_orderbook = lambda: api.get_order_book(market.name)
+
         logger.info("Enter market maker loop")
         obs = OrderBookSeries.bootstrap(api, CONFIG)
-        update_id = 0
+        last_update_id = -1
         while True:
             # Sleep for 100ms to avoid hitting rate limit
             time.sleep(0.100)
-            orderbook = api.get_order_book(market.name)
+            orderbook = retry(get_orderbook)
             # if there has been no changes on the orderbook skip the loop iteration
-            if orderbook.update_id == update_id:
+            if orderbook.update_id == last_update_id:
                 continue
             logger.debug("Updating orderbook series and dataframe.")
-            update_id = orderbook.update_id
+            last_update_id = orderbook.update_id
             obs = obs.update(orderbook, CONFIG['max_obs_size'])
             df = get_obs_dataframe(obs)
             orders = retry(get_orders)
@@ -300,8 +307,7 @@ def main():
                     buy_order = place_order(market, new_buy)
                 # If straddle becomes to big set re-buy order
                 elif should_rebuy(sell_orders, buy_order):
-                    is_top_order = is_equal(buy_order.price, df.Pbid[-1])
-                    if not is_top_order:
+                    if not is_top_bid(buy_order.price, df.Pbid[-1], df.Pask[-1]):
                         logger.info("Straddle too big. Performing rebuy.")
                         api.cancel_order(buy_order.id, market.name)
                         new_buy = get_buy_order(market, obs, df).constrain_price(market)
