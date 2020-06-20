@@ -5,7 +5,7 @@ The makerbot is a cryptocurrency market-maker bot that is easy to understand and
 
 **Requires Python 3.7**
 
-**This software is a beta. It works as intended but several improvements are expected in the near term.**
+**CURRENTLY THIS SOFTWARE IS NON-FUNCTIONAL, NASH IS IN THE PROCESS OF UPDATING THE PYTHON SDK TO THE NEW MPC API SYSTEM.**
 
 Quick install guide
 -------------------
